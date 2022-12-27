@@ -1,0 +1,6 @@
+github_releases:
+  prometheus/prometheus: 2.5.0
+  caarlos0/version_exporter: 1.0.2
+docker_images:
+  library/php: 8.1.0
+  morawskim/htrace.sh: 1.0.0
