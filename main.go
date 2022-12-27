@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/common/log"
 	"net/http"
 	"up-to-date-exporter/config"
+	"up-to-date-exporter/dockerimage"
 	"up-to-date-exporter/githubrelease"
 )
 
@@ -18,6 +19,7 @@ func main() {
 	config.Load("config.yaml", &conf)
 
 	githubrelease.Register("", conf.GithubReleases)
+	dockerimage.Register(conf.DockerImages)
 	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
