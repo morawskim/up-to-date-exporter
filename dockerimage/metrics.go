@@ -2,6 +2,7 @@ package dockerimage
 
 import (
 	"github.com/Masterminds/semver"
+	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"sync"
@@ -10,9 +11,9 @@ import (
 	"up-to-date-exporter/dockerimage/config"
 )
 
-func Register(containers map[string]string) {
+func Register(containers map[string]string, cacheClient *cache.Cache) {
 	dockerHubConfig := config.Config{Images: containers}
-	dockerHubClient := client.NewDockerHubClient()
+	dockerHubClient := client.NewCachedClient(client.NewDockerHubClient(), cacheClient)
 
 	prometheus.MustRegister(collect(&dockerHubConfig, dockerHubClient))
 }
