@@ -4,3 +4,5 @@ github_releases:
 docker_images:
   library/php: 8.1.0
   morawskim/htrace.sh: 1.0.0
+github_tags:
+  stasiu20/ssorder: 2.21.0

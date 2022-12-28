@@ -10,6 +10,7 @@ import (
 	"up-to-date-exporter/config"
 	"up-to-date-exporter/dockerimage"
 	"up-to-date-exporter/githubrelease"
+	"up-to-date-exporter/githubtag"
 )
 
 const (
@@ -24,6 +25,7 @@ func main() {
 
 	githubrelease.Register("", conf.GithubReleases, cacheClient)
 	dockerimage.Register(conf.DockerImages, cacheClient)
+	githubtag.Register(conf.GithubTags, cacheClient)
 	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
