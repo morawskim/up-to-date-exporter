@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/alecthomas/kingpin"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -13,13 +14,27 @@ import (
 	"up-to-date-exporter/githubtag"
 )
 
-const (
-	bind = ":9333"
+var (
+	bind       = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
+	debug      = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
+	configFile = kingpin.Flag("config.file", "config file").Default("config.yaml").ExistingFile()
+
+	version = "dev"
 )
 
 func main() {
+	kingpin.Version("up-to-date-exporter version " + version)
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
+	log.Info("starting up-to-date-exporter")
+
+	if *debug {
+		_ = log.Base().SetLevel("debug")
+		log.Debug("enabled debug mode")
+	}
+
 	var conf = config.Config{}
-	config.Load("config.yaml", &conf)
+	config.Load(*configFile, &conf)
 
 	cacheClient := cache.New(time.Minute*15, time.Minute*15)
 
@@ -41,8 +56,8 @@ func main() {
 			`,
 		)
 	})
-	log.Info("listening on ", bind)
-	if err := http.ListenAndServe(bind, nil); err != nil {
+	log.Info("listening on ", *bind)
+	if err := http.ListenAndServe(*bind, nil); err != nil {
 		log.Fatalf("error starting server: %s", err)
 	}
 }
