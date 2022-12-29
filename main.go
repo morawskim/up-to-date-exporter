@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 	"up-to-date-exporter/adapter/dockerimage"
+	"up-to-date-exporter/adapter/githubrelease"
 	"up-to-date-exporter/adapter/githubtag"
 	"up-to-date-exporter/config"
-	"up-to-date-exporter/githubrelease"
 )
 
 var (
