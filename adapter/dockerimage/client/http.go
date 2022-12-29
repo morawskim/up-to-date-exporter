@@ -11,14 +11,14 @@ type response struct {
 	Results []Release `json:"results"`
 }
 
-type DockerHubClient struct {
+type DockerHubHttpClient struct {
 }
 
-func NewDockerHubClient() *DockerHubClient {
-	return &DockerHubClient{}
+func NewDockerHubClient() *DockerHubHttpClient {
+	return &DockerHubHttpClient{}
 }
 
-func (d *DockerHubClient) Releases(container string) ([]Release, error) {
+func (d *DockerHubHttpClient) Releases(container string) ([]Release, error) {
 	var response response
 
 	req, _ := http.NewRequest(

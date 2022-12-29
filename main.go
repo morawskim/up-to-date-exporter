@@ -8,9 +8,9 @@ import (
 	"github.com/prometheus/common/log"
 	"net/http"
 	"time"
+	"up-to-date-exporter/adapter/dockerimage"
 	"up-to-date-exporter/adapter/githubtag"
 	"up-to-date-exporter/config"
-	"up-to-date-exporter/dockerimage"
 	"up-to-date-exporter/githubrelease"
 )
 

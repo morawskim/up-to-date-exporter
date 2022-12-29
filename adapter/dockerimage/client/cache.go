@@ -6,19 +6,19 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-type CachedClient struct {
-	client      Client
+type DockerHubCachedClient struct {
+	client      DockerHubClient
 	cacheClient *cache.Cache
 }
 
-func NewCachedClient(client Client, cacheClient *cache.Cache) *CachedClient {
-	return &CachedClient{
+func NewCachedClient(client DockerHubClient, cacheClient *cache.Cache) *DockerHubCachedClient {
+	return &DockerHubCachedClient{
 		client:      client,
 		cacheClient: cacheClient,
 	}
 }
 
-func (c *CachedClient) Releases(container string) ([]Release, error) {
+func (c *DockerHubCachedClient) Releases(container string) ([]Release, error) {
 	key := fmt.Sprintf("dh:%s", container)
 
 	cached, found := c.cacheClient.Get(key)

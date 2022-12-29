@@ -7,39 +7,38 @@ import (
 	"github.com/prometheus/common/log"
 	"sync"
 	"time"
-	config2 "up-to-date-exporter/config"
-	"up-to-date-exporter/dockerimage/client"
-	"up-to-date-exporter/dockerimage/config"
+	"up-to-date-exporter/adapter/dockerimage/client"
+	"up-to-date-exporter/config"
 )
 
-func Register(containers map[string]string, cacheClient *cache.Cache) config2.ReloadCollectorConfiguration {
-	dockerHubConfig := config.Config{Images: containers}
+func Register(containers map[string]string, cacheClient *cache.Cache) config.ReloadCollectorConfiguration {
+	dockerHubConfig := Config{Images: containers}
 	dockerHubClient := client.NewCachedClient(client.NewDockerHubClient(), cacheClient)
 
-	col := collect(&dockerHubConfig, dockerHubClient)
-	prometheus.MustRegister(col)
+	collector := newCollector(&dockerHubConfig, dockerHubClient)
+	prometheus.MustRegister(collector)
 
-	return col
+	return collector
 }
 
 type versionCollector struct {
 	mutex  sync.Mutex
-	config *config.Config
-	client client.Client
+	config *Config
+	client client.DockerHubClient
 
 	up             *prometheus.Desc
 	upToDate       *prometheus.Desc
 	scrapeDuration *prometheus.Desc
 }
 
-func (v *versionCollector) ReloadConfiguration(config *config2.Config) {
+func (v *versionCollector) ReloadConfiguration(config *config.Config) {
 	v.config.Images = config.DockerImages
 }
 
-func (v *versionCollector) Describe(descs chan<- *prometheus.Desc) {
-	descs <- v.up
-	descs <- v.upToDate
-	descs <- v.scrapeDuration
+func (v *versionCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- v.up
+	ch <- v.upToDate
+	ch <- v.scrapeDuration
 }
 
 func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
@@ -91,7 +90,7 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func collect(config *config.Config, client client.Client) config2.ReloadCollectorConfiguration {
+func newCollector(config *Config, client client.DockerHubClient) config.ReloadCollectorConfiguration {
 	const namespace = "docker_hub_version"
 	const subsystem = ""
 
@@ -119,7 +118,7 @@ func collect(config *config.Config, client client.Client) config2.ReloadCollecto
 	}
 }
 
-func getLatest(client client.Client, repo string) (*semver.Version, error) {
+func getLatest(client client.DockerHubClient, repo string) (*semver.Version, error) {
 	images, err := client.Releases(repo)
 	if err != nil {
 		return nil, err

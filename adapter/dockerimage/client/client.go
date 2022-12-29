@@ -9,6 +9,6 @@ type Release struct {
 	PushedAt time.Time `json:"tag_last_pushed,omitempty"`
 }
 
-type Client interface {
+type DockerHubClient interface {
 	Releases(container string) ([]Release, error)
 }
