@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/common/log"
 	"sync"
 	"time"
+	config2 "up-to-date-exporter/config"
 	"up-to-date-exporter/githubtag/client"
 	"up-to-date-exporter/githubtag/config"
 )
@@ -19,6 +20,10 @@ type githubTagsCollector struct {
 	up             *prometheus.Desc
 	upToDate       *prometheus.Desc
 	scrapeDuration *prometheus.Desc
+}
+
+func (g *githubTagsCollector) ReloadConfiguration(config *config2.Config) {
+	g.config.Repositories = config.GithubTags
 }
 
 func (g *githubTagsCollector) Describe(descs chan<- *prometheus.Desc) {
@@ -77,16 +82,20 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func Register(repositories map[string]string, cacheClient *cache.Cache) {
+func Register(repositories map[string]string, cacheClient *cache.Cache) config2.ReloadCollectorConfiguration {
 	githubTagsConfig := &config.Config{Repositories: repositories}
 	githubTagsClient := client.NewCachedClient(
 		client.NewGithubTagHttpClient(""),
 		cacheClient,
 	)
-	prometheus.MustRegister(collector(githubTagsConfig, githubTagsClient))
+
+	col := collector(githubTagsConfig, githubTagsClient)
+	prometheus.MustRegister(col)
+
+	return col
 }
 
-func collector(config *config.Config, client client.GithubTagClient) prometheus.Collector {
+func collector(config *config.Config, client client.GithubTagClient) config2.ReloadCollectorConfiguration {
 	const namespace = "github_tag"
 	const subsystem = ""
 

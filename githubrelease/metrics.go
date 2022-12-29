@@ -6,9 +6,19 @@ import (
 	"github.com/caarlos0/version_exporter/config"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
+	config2 "up-to-date-exporter/config"
 )
 
-func Register(githubToken string, repositories map[string]string, cacheClient *cache.Cache) {
+type GithubReleasesCollector struct {
+	prometheus.Collector
+	releaseConfig *config.Config
+}
+
+func (g *GithubReleasesCollector) ReloadConfiguration(config *config2.Config) {
+	g.releaseConfig.Repositories = config.GithubReleases
+}
+
+func Register(githubToken string, repositories map[string]string, cacheClient *cache.Cache) config2.ReloadCollectorConfiguration {
 	releaseClient := client.NewCachedClient(
 		client.NewClient(githubToken),
 		cacheClient,
@@ -17,5 +27,11 @@ func Register(githubToken string, repositories map[string]string, cacheClient *c
 	var releaseConfig config.Config
 	releaseConfig.Repositories = repositories
 
-	prometheus.MustRegister(collector.NewVersionCollector(&releaseConfig, releaseClient))
+	collector := collector.NewVersionCollector(&releaseConfig, releaseClient)
+	prometheus.MustRegister(collector)
+
+	return &GithubReleasesCollector{
+		Collector:     collector,
+		releaseConfig: &releaseConfig,
+	}
 }

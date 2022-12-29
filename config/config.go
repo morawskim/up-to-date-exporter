@@ -1,10 +1,18 @@
 package config
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"gopkg.in/yaml.v2"
 	"os"
+	"os/signal"
+	"syscall"
 )
+
+type ReloadCollectorConfiguration interface {
+	prometheus.Collector
+	ReloadConfiguration(config *Config)
+}
 
 type Config struct {
 	GithubReleases map[string]string `yaml:"github_releases"`
@@ -25,8 +33,22 @@ func doLoad(file string, config *Config) error {
 	return nil
 }
 
-func Load(file string, config *Config) {
+func Load(file string, config *Config, onReload func()) {
 	if err := doLoad(file, config); err != nil {
 		log.Fatalln("failed to load config: ", err)
 	}
+
+	var configCh = make(chan os.Signal, 1)
+	signal.Notify(configCh, syscall.SIGHUP)
+
+	go func() {
+		for range configCh {
+			log.Debug("reloading config...")
+			if err := doLoad(file, config); err != nil {
+				log.Fatalln("failed to reload config: ", err)
+			}
+			onReload()
+			log.Info("config reloaded...")
+		}
+	}()
 }

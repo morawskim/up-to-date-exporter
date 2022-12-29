@@ -33,14 +33,24 @@ func main() {
 		log.Debug("enabled debug mode")
 	}
 
-	var conf = config.Config{}
-	config.Load(*configFile, &conf)
-
 	cacheClient := cache.New(time.Minute*15, time.Minute*15)
 
-	githubrelease.Register("", conf.GithubReleases, cacheClient)
-	dockerimage.Register(conf.DockerImages, cacheClient)
-	githubtag.Register(conf.GithubTags, cacheClient)
+	var conf = config.Config{}
+	var collectorGitHubReleases, collectorDockerImages, collectorGitHubTags config.ReloadCollectorConfiguration
+
+	config.Load(*configFile, &conf, func() {
+		collectorGitHubReleases.ReloadConfiguration(&conf)
+		collectorDockerImages.ReloadConfiguration(&conf)
+		collectorGitHubTags.ReloadConfiguration(&conf)
+
+		log.Debug("flushing cache...")
+		cacheClient.Flush()
+	})
+
+	collectorGitHubReleases = githubrelease.Register("", conf.GithubReleases, cacheClient)
+	collectorDockerImages = dockerimage.Register(conf.DockerImages, cacheClient)
+	collectorGitHubTags = githubtag.Register(conf.GithubTags, cacheClient)
+
 	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
