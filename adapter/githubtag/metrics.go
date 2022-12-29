@@ -7,14 +7,13 @@ import (
 	"github.com/prometheus/common/log"
 	"sync"
 	"time"
-	config2 "up-to-date-exporter/config"
-	"up-to-date-exporter/githubtag/client"
-	"up-to-date-exporter/githubtag/config"
+	"up-to-date-exporter/adapter/githubtag/client"
+	"up-to-date-exporter/config"
 )
 
 type githubTagsCollector struct {
 	mutex  sync.Mutex
-	config *config.Config
+	config *Config
 	client client.GithubTagClient
 
 	up             *prometheus.Desc
@@ -22,7 +21,7 @@ type githubTagsCollector struct {
 	scrapeDuration *prometheus.Desc
 }
 
-func (g *githubTagsCollector) ReloadConfiguration(config *config2.Config) {
+func (g *githubTagsCollector) ReloadConfiguration(config *config.Config) {
 	g.config.Repositories = config.GithubTags
 }
 
@@ -82,8 +81,8 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func Register(repositories map[string]string, cacheClient *cache.Cache) config2.ReloadCollectorConfiguration {
-	githubTagsConfig := &config.Config{Repositories: repositories}
+func Register(repositories map[string]string, cacheClient *cache.Cache) config.ReloadCollectorConfiguration {
+	githubTagsConfig := &Config{Repositories: repositories}
 	githubTagsClient := client.NewCachedClient(
 		client.NewGithubTagHttpClient(""),
 		cacheClient,
@@ -95,7 +94,7 @@ func Register(repositories map[string]string, cacheClient *cache.Cache) config2.
 	return col
 }
 
-func collector(config *config.Config, client client.GithubTagClient) config2.ReloadCollectorConfiguration {
+func collector(config *Config, client client.GithubTagClient) config.ReloadCollectorConfiguration {
 	const namespace = "github_tag"
 	const subsystem = ""
 

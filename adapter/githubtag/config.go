@@ -1,4 +1,4 @@
-package config
+package githubtag
 
 type Config struct {
 	Repositories map[string]string
