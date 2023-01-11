@@ -15,11 +15,13 @@ import (
 )
 
 var (
-	bind       = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
-	debug      = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
+	//nolint: gochecknoglobals
+	bind = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
+	//nolint: gochecknoglobals
+	debug = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
+	//nolint: gochecknoglobals
 	configFile = kingpin.Flag("config.file", "config file").Default("config.yaml").ExistingFile()
-
-	version = "dev"
+	version    = "dev"
 )
 
 func main() {
@@ -67,7 +69,7 @@ func main() {
 		)
 	})
 	log.Info("listening on ", *bind)
-	if err := http.ListenAndServe(*bind, nil); err != nil {
+	if err := http.ListenAndServe(*bind, nil); err != nil { //nolint:gosec
 		log.Fatalf("error starting server: %s", err)
 	}
 }

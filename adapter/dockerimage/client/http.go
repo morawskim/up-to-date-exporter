@@ -11,17 +11,17 @@ type response struct {
 	Results []Release `json:"results"`
 }
 
-type DockerHubHttpClient struct {
+type DockerHubHTTPClient struct {
 }
 
-func NewDockerHubClient() *DockerHubHttpClient {
-	return &DockerHubHttpClient{}
+func NewDockerHubClient() *DockerHubHTTPClient {
+	return &DockerHubHTTPClient{}
 }
 
-func (d *DockerHubHttpClient) Releases(container string) ([]Release, error) {
+func (d *DockerHubHTTPClient) Releases(container string) ([]Release, error) {
 	var response response
 
-	req, _ := http.NewRequest(
+	req, _ := http.NewRequest( //nolint: noctx
 		http.MethodGet,
 		fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/%s/tags?page_size=100", container),
 		nil,
@@ -38,5 +38,6 @@ func (d *DockerHubHttpClient) Releases(container string) ([]Release, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, errors.Wrap(err, "failed to parse the response body")
 	}
+
 	return response.Results, nil
 }

@@ -7,19 +7,19 @@ import (
 	"net/http"
 )
 
-type GithubTagsHttpClient struct {
+type GithubTagsHTTPClient struct {
 	token string
 }
 
-func NewGithubTagHttpClient(token string) *GithubTagsHttpClient {
-	return &GithubTagsHttpClient{
+func NewGithubTagHTTPClient(token string) *GithubTagsHTTPClient {
+	return &GithubTagsHTTPClient{
 		token: token,
 	}
 }
 
-func (c *GithubTagsHttpClient) GetTags(repository string) ([]GithubTag, error) {
+func (c *GithubTagsHTTPClient) GetTags(repository string) ([]GithubTag, error) {
 	var result []GithubTag
-	req, _ := http.NewRequest(
+	req, _ := http.NewRequest( //nolint: noctx
 		http.MethodGet,
 		fmt.Sprintf("https://api.github.com/repos/%s/tags", repository),
 		nil,

@@ -18,7 +18,11 @@ func (g *GithubReleasesCollector) ReloadConfiguration(config *appconfig.Config) 
 	g.releaseConfig.Repositories = config.GithubReleases
 }
 
-func Register(githubToken string, repositories map[string]string, cacheClient *cache.Cache) appconfig.ReloadCollectorConfiguration {
+func Register( //nolint:ireturn
+	githubToken string,
+	repositories map[string]string,
+	cacheClient *cache.Cache,
+) appconfig.ReloadCollectorConfiguration {
 	releaseClient := client.NewCachedClient(
 		client.NewClient(githubToken),
 		cacheClient,

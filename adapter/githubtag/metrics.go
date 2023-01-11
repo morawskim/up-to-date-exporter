@@ -3,6 +3,7 @@ package githubtag
 import (
 	"github.com/Masterminds/semver"
 	"github.com/patrickmn/go-cache"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"sync"
@@ -46,6 +47,7 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 		if err != nil {
 			log.Errorf("failed to collect for %s: %s", repo, err.Error())
 			success = false
+
 			continue
 		}
 
@@ -53,16 +55,16 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		var up = constraint.Check(latestVersion)
+		var isUpToDate = constraint.Check(latestVersion)
 		log.With("constraint", version).
 			With("latest", latestVersion).
-			With("up_to_date", up).
+			With("up_to_date", isUpToDate).
 			Debug("checked")
 
 		ch <- prometheus.MustNewConstMetric(
 			g.upToDate,
 			prometheus.GaugeValue,
-			boolToFloat(up),
+			boolToFloat(isUpToDate),
 			repo,
 			version,
 			latestVersion.String(),
@@ -81,10 +83,10 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func Register(repositories map[string]string, cacheClient *cache.Cache) config.ReloadCollectorConfiguration {
+func Register(repositories map[string]string, cacheClient *cache.Cache) config.ReloadCollectorConfiguration { //nolint:ireturn, lll
 	githubTagsConfig := &Config{Repositories: repositories}
 	githubTagsClient := client.NewCachedClient(
-		client.NewGithubTagHttpClient(""),
+		client.NewGithubTagHTTPClient(""),
 		cacheClient,
 	)
 
@@ -94,7 +96,7 @@ func Register(repositories map[string]string, cacheClient *cache.Cache) config.R
 	return col
 }
 
-func collector(config *Config, client client.GithubTagClient) config.ReloadCollectorConfiguration {
+func collector(config *Config, client client.GithubTagClient) *githubTagsCollector {
 	const namespace = "github_tag"
 	const subsystem = ""
 
@@ -126,6 +128,7 @@ func boolToFloat(b bool) float64 {
 	if b {
 		return 1.0
 	}
+
 	return 0.0
 }
 
@@ -142,6 +145,7 @@ func getLatestTag(client client.GithubTagClient, repo string) (*semver.Version, 
 			log.With("error", err).
 				With("tag", tag.Tag).
 				Errorf("failed to parse tag %s", tag.Tag)
+
 			continue
 		}
 
@@ -152,5 +156,5 @@ func getLatestTag(client client.GithubTagClient, repo string) (*semver.Version, 
 		return version, nil
 	}
 
-	return nil, nil
+	return nil, errors.New("no found any versions")
 }

@@ -1,6 +1,7 @@
 package dockerimage
 
 import (
+	"errors"
 	"github.com/Masterminds/semver"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,7 +12,11 @@ import (
 	"up-to-date-exporter/config"
 )
 
-func Register(containers map[string]string, cacheClient *cache.Cache) config.ReloadCollectorConfiguration {
+var (
+	ErrNoVersions = errors.New("no found any versions")
+)
+
+func Register(containers map[string]string, cacheClient *cache.Cache) config.ReloadCollectorConfiguration { //nolint:ireturn,lll
 	dockerHubConfig := Config{Images: containers}
 	dockerHubClient := client.NewCachedClient(client.NewDockerHubClient(), cacheClient)
 
@@ -55,6 +60,7 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 		if err != nil {
 			log.Errorf("failed to collect for %s: %s", repo, err.Error())
 			success = false
+
 			continue
 		}
 
@@ -62,16 +68,16 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		var up = sconstraint.Check(latestRelease)
+		var isUpToDate = sconstraint.Check(latestRelease)
 		log.With("constraint", ver).
 			With("latest", latestRelease).
-			With("up_to_date", up).
+			With("up_to_date", isUpToDate).
 			Debug("checked")
 
 		ch <- prometheus.MustNewConstMetric(
 			v.upToDate,
 			prometheus.GaugeValue,
-			boolToFloat(up),
+			boolToFloat(isUpToDate),
 			repo,
 			ver,
 			latestRelease.String(),
@@ -90,7 +96,7 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func newCollector(config *Config, client client.DockerHubClient) config.ReloadCollectorConfiguration {
+func newCollector(config *Config, client client.DockerHubClient) *versionCollector {
 	const namespace = "docker_hub_version"
 	const subsystem = ""
 
@@ -130,6 +136,7 @@ func getLatest(client client.DockerHubClient, repo string) (*semver.Version, err
 			log.With("error", err).
 				With("tag", release.Tag).
 				Errorf("failed to parse tag %s", release.Tag)
+
 			continue
 		}
 		if version.Prerelease() != "" {
@@ -139,12 +146,13 @@ func getLatest(client client.DockerHubClient, repo string) (*semver.Version, err
 		return version, nil
 	}
 
-	return nil, nil
+	return nil, ErrNoVersions
 }
 
 func boolToFloat(b bool) float64 {
 	if b {
 		return 1.0
 	}
+
 	return 0.0
 }

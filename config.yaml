@@ -1,8 +1,11 @@
 github_releases:
   prometheus/prometheus: 2.5.0
   caarlos0/version_exporter: 1.0.2
+  morawskim/faker-cli: 2.0.0
 docker_images:
   library/php: 8.1.0
   morawskim/htrace.sh: 1.0.0
+  opensuse/leap: 15.0.0
 github_tags:
   stasiu20/ssorder: 2.21.0
+  morawskim/faker-images: 0.7.0

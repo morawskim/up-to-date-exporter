@@ -30,6 +30,7 @@ func doLoad(file string, config *Config) error {
 		return err
 	}
 	*config = newConfig
+
 	return nil
 }
 
