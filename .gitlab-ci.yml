@@ -10,6 +10,15 @@ stages:
   before_script:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
 
+# see https://github.com/golangci/golangci-lint/issues/3094
+govulncheck:
+  stage: qa
+  image: golang:1-bullseye
+  script:
+    - go install golang.org/x/vuln/cmd/govulncheck@latest
+    - govulncheck .
+  allow_failure: true
+
 docker/main:
   extends: .docker
   script:
