@@ -1,9 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	"gopkg.in/yaml.v2"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,7 +37,8 @@ func doLoad(file string, config *Config) error {
 
 func Load(file string, config *Config, onReload func()) {
 	if err := doLoad(file, config); err != nil {
-		log.Fatalln("failed to load config: ", err)
+		slog.Default().Error(fmt.Sprintf("failed to load config: %s", err))
+		panic(err)
 	}
 
 	var configCh = make(chan os.Signal, 1)
@@ -44,12 +46,13 @@ func Load(file string, config *Config, onReload func()) {
 
 	go func() {
 		for range configCh {
-			log.Debug("reloading config...")
+			slog.Default().Debug("reloading config...")
 			if err := doLoad(file, config); err != nil {
-				log.Fatalln("failed to reload config: ", err)
+				slog.Default().Error(fmt.Sprintf("failed to reload config: %s", err))
+				panic(err)
 			}
 			onReload()
-			log.Info("config reloaded...")
+			slog.Default().Info("config reloaded...")
 		}
 	}()
 }

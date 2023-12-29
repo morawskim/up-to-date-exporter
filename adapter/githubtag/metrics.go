@@ -1,11 +1,12 @@
 package githubtag
 
 import (
+	"fmt"
 	"github.com/Masterminds/semver"
 	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
+	"log/slog"
 	"sync"
 	"time"
 	"up-to-date-exporter/adapter/githubtag/client"
@@ -40,12 +41,12 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 	success := true
 
 	for repo, version := range g.config.Repositories {
-		var log = log.With("repo", repo)
+		var log = slog.Default().With("repo", repo)
 		constraint, _ := semver.NewConstraint(version)
 
 		latestVersion, err := getLatestTag(g.client, repo)
 		if err != nil {
-			log.Errorf("failed to collect for %s: %s", repo, err.Error())
+			log.Error(fmt.Sprintf("failed to collect for %s: %s", repo, err.Error()))
 			success = false
 
 			continue
@@ -142,9 +143,9 @@ func getLatestTag(client client.GithubTagClient, repo string) (*semver.Version, 
 	for _, tag := range tags {
 		version, err := semver.NewVersion(tag.Tag)
 		if err != nil {
-			log.With("error", err).
+			slog.Default().With("error", err).
 				With("tag", tag.Tag).
-				Errorf("failed to parse tag %s", tag.Tag)
+				Error(fmt.Sprintf("failed to parse tag %s", tag.Tag))
 
 			continue
 		}

@@ -3,7 +3,7 @@ package client
 import (
 	"fmt"
 	"github.com/patrickmn/go-cache"
-	"github.com/prometheus/common/log"
+	"log/slog"
 )
 
 type DockerHubCachedClient struct {
@@ -23,11 +23,11 @@ func (c *DockerHubCachedClient) Releases(container string) ([]Release, error) {
 
 	cached, found := c.cacheClient.Get(key)
 	if found {
-		log.Debugf("using result from cache for %s", key)
+		slog.Default().Debug(fmt.Sprintf("using result from cache for %s", key))
 
 		return cached.([]Release), nil //nolint: forcetypeassert
 	}
-	log.Debugf("using result from API for %s", key)
+	slog.Default().Debug(fmt.Sprintf("using result from API for %s", key))
 	live, err := c.client.Releases(container)
 	c.cacheClient.Set(key, live, cache.DefaultExpiration)
 

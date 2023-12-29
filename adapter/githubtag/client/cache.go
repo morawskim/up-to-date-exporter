@@ -3,7 +3,7 @@ package client
 import (
 	"fmt"
 	"github.com/patrickmn/go-cache"
-	"github.com/prometheus/common/log"
+	"log/slog"
 )
 
 type CachedGithubTagClient struct {
@@ -16,11 +16,11 @@ func (c *CachedGithubTagClient) GetTags(repository string) ([]GithubTag, error) 
 
 	cached, found := c.cacheClient.Get(key)
 	if found {
-		log.Debugf("using result from cache for %s", key)
+		slog.Default().Debug(fmt.Sprintf("using result from cache for %s", key))
 
 		return cached.([]GithubTag), nil //nolint: forcetypeassert
 	}
-	log.Debugf("using result from API for %s", key)
+	slog.Default().Debug(fmt.Sprintf("using result from API for %s", key))
 	live, err := c.githubTagsClient.GetTags(repository)
 	c.cacheClient.Set(key, live, cache.DefaultExpiration)
 

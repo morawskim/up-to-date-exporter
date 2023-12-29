@@ -5,8 +5,9 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 	"up-to-date-exporter/adapter/dockerimage"
 	"up-to-date-exporter/adapter/githubrelease"
@@ -28,11 +29,19 @@ func main() {
 	kingpin.Version("up-to-date-exporter version " + version)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	log.Info("starting up-to-date-exporter")
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	logger.Info("starting up-to-date-exporter")
 
 	if *debug {
-		_ = log.Base().SetLevel("debug")
-		log.Debug("enabled debug mode")
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}))
+		slog.SetDefault(logger)
+
+		logger.Debug("enabled debug mode")
 	}
 
 	cacheClient := cache.New(time.Minute*15, time.Minute*15)
@@ -45,7 +54,7 @@ func main() {
 		collectorDockerImages.ReloadConfiguration(&conf)
 		collectorGitHubTags.ReloadConfiguration(&conf)
 
-		log.Debug("flushing cache...")
+		logger.Debug("flushing cache...")
 		cacheClient.Flush()
 	})
 
@@ -68,8 +77,9 @@ func main() {
 			`,
 		)
 	})
-	log.Info("listening on ", *bind)
+	logger.Info(fmt.Sprintf(`listening on %s`, *bind))
 	if err := http.ListenAndServe(*bind, nil); err != nil { //nolint:gosec
-		log.Fatalf("error starting server: %s", err)
+		logger.Error(fmt.Sprintf("error starting server: %s", err))
+		panic(err)
 	}
 }

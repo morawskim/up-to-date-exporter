@@ -2,10 +2,11 @@ package dockerimage
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Masterminds/semver"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
+	"log/slog"
 	"sync"
 	"time"
 	"up-to-date-exporter/adapter/dockerimage/client"
@@ -53,12 +54,12 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	var start = time.Now()
 
 	for repo, ver := range v.config.Images {
-		var log = log.With("image", repo)
+		var log = slog.Default().With("image", repo)
 		sconstraint, _ := semver.NewConstraint(ver)
 		latestRelease, err := getLatest(v.client, repo)
 
 		if err != nil {
-			log.Errorf("failed to collect for %s: %s", repo, err.Error())
+			log.Error(fmt.Sprintf("failed to collect for %s: %s", repo, err.Error()))
 			success = false
 
 			continue
@@ -133,9 +134,10 @@ func getLatest(client client.DockerHubClient, repo string) (*semver.Version, err
 	for _, release := range images {
 		version, err := semver.NewVersion(release.Tag)
 		if err != nil {
-			log.With("error", err).
+			slog.Default().With("error", err).
+				With("repo", repo).
 				With("tag", release.Tag).
-				Errorf("failed to parse tag %s", release.Tag)
+				Error(fmt.Sprintf("failed to parse tag %s", release.Tag))
 
 			continue
 		}
