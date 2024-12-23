@@ -9,3 +9,5 @@ docker_images:
 github_tags:
   stasiu20/ssorder: 2.21.0
   morawskim/faker-images: 0.7.0
+quary_images:
+  jupyter/base-notebook: notebook-7.3.1

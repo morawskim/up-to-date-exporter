@@ -12,6 +12,7 @@ import (
 	"up-to-date-exporter/adapter/dockerimage"
 	"up-to-date-exporter/adapter/githubrelease"
 	"up-to-date-exporter/adapter/githubtag"
+	"up-to-date-exporter/adapter/quayimage"
 	"up-to-date-exporter/config"
 )
 
@@ -47,12 +48,13 @@ func main() {
 	cacheClient := cache.New(time.Minute*15, time.Minute*15)
 
 	var conf = config.Config{}
-	var collectorGitHubReleases, collectorDockerImages, collectorGitHubTags config.ReloadCollectorConfiguration
+	var collectorGitHubReleases, collectorDockerImages, collectorGitHubTags, collectorQuayImages config.ReloadCollectorConfiguration
 
 	config.Load(*configFile, &conf, func() {
 		collectorGitHubReleases.ReloadConfiguration(&conf)
 		collectorDockerImages.ReloadConfiguration(&conf)
 		collectorGitHubTags.ReloadConfiguration(&conf)
+		collectorQuayImages.ReloadConfiguration(&conf)
 
 		logger.Debug("flushing cache...")
 		cacheClient.Flush()
@@ -61,6 +63,7 @@ func main() {
 	collectorGitHubReleases = githubrelease.Register("", conf.GithubReleases, cacheClient)
 	collectorDockerImages = dockerimage.Register(conf.DockerImages, cacheClient)
 	collectorGitHubTags = githubtag.Register(conf.GithubTags, cacheClient)
+	collectorQuayImages = quayimage.Register(conf.QuaryImages, cacheClient)
 
 	http.Handle("/metrics", promhttp.Handler())
 

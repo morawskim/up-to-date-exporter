@@ -19,6 +19,7 @@ type Config struct {
 	GithubReleases map[string]string `yaml:"github_releases"`
 	DockerImages   map[string]string `yaml:"docker_images"`
 	GithubTags     map[string]string `yaml:"github_tags"`
+	QuaryImages    map[string]string `yaml:"quary_images"`
 }
 
 func doLoad(file string, config *Config) error {
