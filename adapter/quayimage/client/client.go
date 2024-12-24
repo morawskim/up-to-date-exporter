@@ -9,7 +9,6 @@ type QuayDate struct {
 	time.Time
 }
 
-// UnmarshalJSON implements the json.Unmarshaler interface
 func (qd *QuayDate) UnmarshalJSON(data []byte) error {
 	str := string(data)
 
@@ -25,6 +24,7 @@ func (qd *QuayDate) UnmarshalJSON(data []byte) error {
 	}
 
 	qd.Time = t
+
 	return nil
 }
 

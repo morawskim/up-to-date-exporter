@@ -53,7 +53,12 @@ func (d *QuayHTTPClient) Releases(container string) ([]Release, error) {
 	}
 
 	if response.HasNextPage {
-		response2, err := d.fetchTags(fmt.Sprintf("https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true&limit=100&page=2", container))
+		response2, err := d.fetchTags(
+			fmt.Sprintf(
+				"https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true&limit=100&page=2",
+				container,
+			),
+		)
 
 		if err != nil {
 			return nil, err

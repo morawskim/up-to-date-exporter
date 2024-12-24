@@ -165,6 +165,7 @@ func extractPrefixFromTag(input string) string {
 	index := strings.Index(input, "-")
 	if index != -1 {
 		result := input[:index+1]
+
 		return result
 	}
 

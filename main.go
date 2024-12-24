@@ -48,7 +48,8 @@ func main() {
 	cacheClient := cache.New(time.Minute*15, time.Minute*15)
 
 	var conf = config.Config{}
-	var collectorGitHubReleases, collectorDockerImages, collectorGitHubTags, collectorQuayImages config.ReloadCollectorConfiguration
+	var collectorGitHubReleases, collectorDockerImages, collectorGitHubTags config.ReloadCollectorConfiguration
+	var collectorQuayImages config.ReloadCollectorConfiguration
 
 	config.Load(*configFile, &conf, func() {
 		collectorGitHubReleases.ReloadConfiguration(&conf)
