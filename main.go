@@ -65,6 +65,7 @@ func main() {
 	collectorDockerImages = dockerimage.Register(conf.DockerImages, cacheClient)
 	collectorGitHubTags = githubtag.Register(conf.GithubTags, cacheClient)
 	collectorQuayImages = quayimage.Register(conf.QuaryImages, cacheClient)
+	go refreshData(logger, collectorDockerImages, collectorGitHubTags, collectorQuayImages)
 
 	http.Handle("/metrics", promhttp.Handler())
 
@@ -85,5 +86,19 @@ func main() {
 	if err := http.ListenAndServe(*bind, nil); err != nil { //nolint:gosec
 		logger.Error(fmt.Sprintf("error starting server: %s", err))
 		panic(err)
+	}
+}
+
+func refreshData(logger *slog.Logger, collectors ...config.ReloadCollectorConfiguration) {
+	logger.Info("refreshing data")
+	for _, c := range collectors {
+		c.FetchData()
+	}
+
+	for range time.Tick(time.Minute * 5) {
+		logger.Info("refreshing data")
+		for _, c := range collectors {
+			c.FetchData()
+		}
 	}
 }

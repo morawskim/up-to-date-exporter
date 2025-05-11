@@ -13,6 +13,7 @@ import (
 type ReloadCollectorConfiguration interface {
 	prometheus.Collector
 	ReloadConfiguration(config *Config)
+	FetchData()
 }
 
 type Config struct {

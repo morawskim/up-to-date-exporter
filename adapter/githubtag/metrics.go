@@ -14,13 +14,26 @@ import (
 )
 
 type githubTagsCollector struct {
-	mutex  sync.Mutex
-	config *Config
-	client client.GithubTagClient
+	mutex        sync.Mutex
+	config       *Config
+	client       client.GithubTagClient
+	internalData githubTagsData
 
 	up             *prometheus.Desc
 	upToDate       *prometheus.Desc
 	scrapeDuration *prometheus.Desc
+}
+
+type githubTagDataItem struct {
+	isUpToDate    bool
+	repo          string
+	version       string
+	latestVersion string
+}
+type githubTagsData struct {
+	success  bool
+	duration float64
+	data     []githubTagDataItem
 }
 
 func (g *githubTagsCollector) ReloadConfiguration(config *config.Config) {
@@ -37,8 +50,38 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
+	for _, item := range g.internalData.data {
+		ch <- prometheus.MustNewConstMetric(
+			g.upToDate,
+			prometheus.GaugeValue,
+			boolToFloat(item.isUpToDate),
+			item.repo,
+			item.version,
+			item.latestVersion,
+		)
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		g.up,
+		prometheus.GaugeValue,
+		boolToFloat(g.internalData.success),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		g.scrapeDuration,
+		prometheus.GaugeValue,
+		g.internalData.duration,
+	)
+}
+
+func (g *githubTagsCollector) FetchData() {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
+	slog.Default().Info("fetch github tags data")
 	start := time.Now()
 	success := true
+	index := 0
+	g.internalData.data = make([]githubTagDataItem, len(g.config.Repositories))
 
 	for repo, version := range g.config.Repositories {
 		var log = slog.Default().With("repo", repo)
@@ -62,26 +105,17 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 			With("up_to_date", isUpToDate).
 			Debug("checked")
 
-		ch <- prometheus.MustNewConstMetric(
-			g.upToDate,
-			prometheus.GaugeValue,
-			boolToFloat(isUpToDate),
-			repo,
-			version,
-			latestVersion.String(),
-		)
+		g.internalData.data[index] = githubTagDataItem{
+			isUpToDate:    isUpToDate,
+			repo:          repo,
+			version:       version,
+			latestVersion: latestVersion.String(),
+		}
+		index++
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		g.up,
-		prometheus.GaugeValue,
-		boolToFloat(success),
-	)
-	ch <- prometheus.MustNewConstMetric(
-		g.scrapeDuration,
-		prometheus.GaugeValue,
-		time.Since(start).Seconds(),
-	)
+	g.internalData.success = success
+	g.internalData.duration = time.Since(start).Seconds()
 }
 
 func Register(repositories map[string]string, cacheClient *cache.Cache) config.ReloadCollectorConfiguration { //nolint:ireturn, lll

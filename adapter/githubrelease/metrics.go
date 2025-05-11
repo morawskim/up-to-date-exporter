@@ -18,6 +18,9 @@ func (g *GithubReleasesCollector) ReloadConfiguration(config *appconfig.Config) 
 	g.releaseConfig.Repositories = config.GithubReleases
 }
 
+func (g *GithubReleasesCollector) FetchData() {
+}
+
 func Register( //nolint:ireturn
 	githubToken string,
 	repositories map[string]string,

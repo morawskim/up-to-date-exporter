@@ -28,13 +28,26 @@ func Register(containers map[string]string, cacheClient *cache.Cache) config.Rel
 }
 
 type versionCollector struct {
-	mutex  sync.Mutex
-	config *Config
-	client client.DockerHubClient
+	mutex        sync.Mutex
+	config       *Config
+	client       client.DockerHubClient
+	internalData dockerImageData
 
 	up             *prometheus.Desc
 	upToDate       *prometheus.Desc
 	scrapeDuration *prometheus.Desc
+}
+
+type dockerImageDataItem struct {
+	isUpToDate    bool
+	repo          string
+	version       string
+	latestVersion string
+}
+type dockerImageData struct {
+	success  bool
+	duration float64
+	data     []dockerImageDataItem
 }
 
 func (v *versionCollector) ReloadConfiguration(config *config.Config) {
@@ -50,8 +63,39 @@ func (v *versionCollector) Describe(ch chan<- *prometheus.Desc) {
 func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
+
+	for _, item := range v.internalData.data {
+		ch <- prometheus.MustNewConstMetric(
+			v.upToDate,
+			prometheus.GaugeValue,
+			boolToFloat(item.isUpToDate),
+			item.repo,
+			item.version,
+			item.latestVersion,
+		)
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		v.up,
+		prometheus.GaugeValue,
+		boolToFloat(v.internalData.success),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		v.scrapeDuration,
+		prometheus.GaugeValue,
+		v.internalData.duration,
+	)
+}
+
+func (v *versionCollector) FetchData() {
+	slog.Default().Info("fetch docker image version")
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
 	var success = true
 	var start = time.Now()
+	index := 0
+	v.internalData.data = make([]dockerImageDataItem, len(v.config.Images))
 
 	for repo, ver := range v.config.Images {
 		var log = slog.Default().With("image", repo)
@@ -75,26 +119,17 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 			With("up_to_date", isUpToDate).
 			Debug("checked")
 
-		ch <- prometheus.MustNewConstMetric(
-			v.upToDate,
-			prometheus.GaugeValue,
-			boolToFloat(isUpToDate),
-			repo,
-			ver,
-			latestRelease.String(),
-		)
+		v.internalData.data[index] = dockerImageDataItem{
+			isUpToDate:    isUpToDate,
+			repo:          repo,
+			version:       ver,
+			latestVersion: latestRelease.String(),
+		}
+		index++
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		v.up,
-		prometheus.GaugeValue,
-		boolToFloat(success),
-	)
-	ch <- prometheus.MustNewConstMetric(
-		v.scrapeDuration,
-		prometheus.GaugeValue,
-		time.Since(start).Seconds(),
-	)
+	v.internalData.success = success
+	v.internalData.duration = time.Since(start).Seconds()
 }
 
 func newCollector(config *Config, client client.DockerHubClient) *versionCollector {
