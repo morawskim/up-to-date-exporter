@@ -1,10 +1,12 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 type GithubTagsHTTPClient struct {
@@ -17,9 +19,10 @@ func NewGithubTagHTTPClient(token string) *GithubTagsHTTPClient {
 	}
 }
 
-func (c *GithubTagsHTTPClient) GetTags(repository string) ([]GithubTag, error) {
+func (c *GithubTagsHTTPClient) GetTags(ctx context.Context, repository string) ([]GithubTag, error) {
 	var result []GithubTag
-	req, _ := http.NewRequest( //nolint: noctx
+	req, _ := http.NewRequestWithContext( //nolint: noctx
+		ctx,
 		http.MethodGet,
 		fmt.Sprintf("https://api.github.com/repos/%s/tags", repository),
 		nil,

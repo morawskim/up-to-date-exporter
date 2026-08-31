@@ -1,16 +1,18 @@
 package dockerimage
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/Masterminds/semver"
-	"github.com/patrickmn/go-cache"
-	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"sync"
 	"time"
 	"up-to-date-exporter/adapter/dockerimage/client"
 	"up-to-date-exporter/config"
+
+	"github.com/Masterminds/semver"
+	"github.com/patrickmn/go-cache"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -87,7 +89,7 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func (v *versionCollector) FetchData() {
+func (v *versionCollector) FetchData(ctx context.Context) {
 	slog.Default().Info("fetch docker image version")
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -100,7 +102,7 @@ func (v *versionCollector) FetchData() {
 	for repo, ver := range v.config.Images {
 		var log = slog.Default().With("image", repo)
 		sconstraint, _ := semver.NewConstraint(ver)
-		latestRelease, err := getLatest(v.client, repo)
+		latestRelease, err := getLatest(ctx, v.client, repo)
 
 		if err != nil {
 			log.Error(fmt.Sprintf("failed to collect for %s: %s", repo, err.Error()))
@@ -160,8 +162,8 @@ func newCollector(config *Config, client client.DockerHubClient) *versionCollect
 	}
 }
 
-func getLatest(client client.DockerHubClient, repo string) (*semver.Version, error) {
-	images, err := client.Releases(repo)
+func getLatest(ctx context.Context, client client.DockerHubClient, repo string) (*semver.Version, error) {
+	images, err := client.Releases(ctx, repo)
 	if err != nil {
 		return nil, err
 	}

@@ -1,8 +1,10 @@
 package client
 
 import (
-	"github.com/pkg/errors"
+	"context"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type QuayDate struct {
@@ -34,5 +36,5 @@ type Release struct {
 }
 
 type QuayClient interface {
-	Releases(container string) ([]Release, error)
+	Releases(ctx context.Context, container string) ([]Release, error)
 }

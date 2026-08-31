@@ -1,9 +1,11 @@
 package client
 
 import (
+	"context"
 	"fmt"
-	"github.com/patrickmn/go-cache"
 	"log/slog"
+
+	"github.com/patrickmn/go-cache"
 )
 
 type CachedGithubTagClient struct {
@@ -11,7 +13,7 @@ type CachedGithubTagClient struct {
 	cacheClient      *cache.Cache
 }
 
-func (c *CachedGithubTagClient) GetTags(repository string) ([]GithubTag, error) {
+func (c *CachedGithubTagClient) GetTags(ctx context.Context, repository string) ([]GithubTag, error) {
 	key := fmt.Sprintf("gt:%s", repository)
 
 	cached, found := c.cacheClient.Get(key)
@@ -21,7 +23,7 @@ func (c *CachedGithubTagClient) GetTags(repository string) ([]GithubTag, error) 
 		return cached.([]GithubTag), nil //nolint: forcetypeassert
 	}
 	slog.Default().Debug(fmt.Sprintf("using result from API for %s", key))
-	live, err := c.githubTagsClient.GetTags(repository)
+	live, err := c.githubTagsClient.GetTags(ctx, repository)
 	c.cacheClient.Set(key, live, cache.DefaultExpiration)
 
 	return live, err

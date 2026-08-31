@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/go as build
+FROM cgr.dev/chainguard/go AS build
 USER root
 
 WORKDIR /work

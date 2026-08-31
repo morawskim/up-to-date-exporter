@@ -1,19 +1,21 @@
 package config
 
 import (
+	"context"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/yaml.v2"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/yaml.v2"
 )
 
 type ReloadCollectorConfiguration interface {
 	prometheus.Collector
 	ReloadConfiguration(config *Config)
-	FetchData()
+	FetchData(context.Context)
 }
 
 type Config struct {

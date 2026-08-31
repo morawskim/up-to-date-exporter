@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"time"
 )
 
@@ -10,5 +11,5 @@ type Release struct {
 }
 
 type DockerHubClient interface {
-	Releases(container string) ([]Release, error)
+	Releases(ctx context.Context, container string) ([]Release, error)
 }

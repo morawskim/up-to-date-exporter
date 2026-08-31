@@ -1,17 +1,19 @@
 package quayimage
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/Masterminds/semver"
-	"github.com/patrickmn/go-cache"
-	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
 	"up-to-date-exporter/adapter/quayimage/client"
 	"up-to-date-exporter/config"
+
+	"github.com/Masterminds/semver"
+	"github.com/patrickmn/go-cache"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -88,7 +90,7 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func (v *versionCollector) FetchData() {
+func (v *versionCollector) FetchData(ctx context.Context) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	slog.Default().Info("fetch quay data")
@@ -100,7 +102,7 @@ func (v *versionCollector) FetchData() {
 	for repo, ver := range v.config.Images {
 		var log = slog.Default().With("image", repo)
 		sconstraint, _ := semver.NewConstraint(strings.TrimPrefix(ver, extractPrefixFromTag(ver)))
-		latestRelease, err := getLatest(v.client, repo, ver)
+		latestRelease, err := getLatest(ctx, v.client, repo, ver)
 
 		if err != nil {
 			log.Error(fmt.Sprintf("failed to collect for %s: %s", repo, err.Error()))
@@ -160,8 +162,8 @@ func newCollector(config *Config, client client.QuayClient) *versionCollector {
 	}
 }
 
-func getLatest(client client.QuayClient, repo string, ver string) (*semver.Version, error) {
-	images, err := client.Releases(repo)
+func getLatest(ctx context.Context, client client.QuayClient, repo string, ver string) (*semver.Version, error) {
+	images, err := client.Releases(ctx, repo)
 	if err != nil {
 		return nil, err
 	}

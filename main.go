@@ -1,10 +1,8 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"github.com/alecthomas/kingpin"
-	"github.com/patrickmn/go-cache"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,6 +12,17 @@ import (
 	"up-to-date-exporter/adapter/githubtag"
 	"up-to-date-exporter/adapter/quayimage"
 	"up-to-date-exporter/config"
+
+	"github.com/alecthomas/kingpin"
+	"github.com/patrickmn/go-cache"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
+
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 var (
@@ -25,6 +34,39 @@ var (
 	configFile = kingpin.Flag("config.file", "config file").Default("config.yaml").ExistingFile()
 	version    = "dev"
 )
+
+func initTrace(ctx context.Context) (*sdktrace.TracerProvider, error) {
+	//res, err := resource.New(
+	//	ctx,
+	//	resource.WithFromEnv(),
+	//	resource.WithProcess(),
+	//	resource.WithHost(),
+	//	resource.WithTelemetrySDK(),
+	//	resource.WithAttributes(
+	//		semconv.ServiceName("up-to-date-exporter"),
+	//		semconv.ServiceVersion(version),
+	//	),
+	//)
+	//
+	//tp := sdktrace.NewTracerProvider(
+	//	sdktrace.WithBatcher(traceExporter),
+	//	sdktrace.WithResource(res),
+	//)
+
+	//exporter, err := stdout.New(stdout.WithPrettyPrint())
+	exporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
+	if err != nil {
+		return nil, err
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	return tp, err
+}
 
 func main() {
 	kingpin.Version("up-to-date-exporter version " + version)
@@ -44,6 +86,22 @@ func main() {
 
 		logger.Debug("enabled debug mode")
 	}
+
+	ctx := context.Background()
+	tp, err := initTrace(ctx)
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to create trace exporter: %v", err))
+		panic(err)
+	}
+	//provisioning
+	http.DefaultClient.Transport = otelhttp.NewTransport(http.DefaultTransport)
+
+	defer func() {
+		if err := tp.Shutdown(ctx); err != nil {
+			logger.Error(fmt.Sprintf("shutdown tracer: %v", err))
+		}
+	}()
+	otel.SetTracerProvider(tp)
 
 	cacheClient := cache.New(time.Minute*15, time.Minute*15)
 
@@ -67,7 +125,7 @@ func main() {
 	collectorQuayImages = quayimage.Register(conf.QuaryImages, cacheClient)
 	go refreshData(logger, collectorDockerImages, collectorGitHubTags, collectorQuayImages)
 
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/metrics", otelhttp.NewHandler(promhttp.Handler(), "metrics"))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(
@@ -89,16 +147,20 @@ func main() {
 	}
 }
 
-func refreshData(logger *slog.Logger, collectors ...config.ReloadCollectorConfiguration) {
+func fetchData(logger *slog.Logger, collectors ...config.ReloadCollectorConfiguration) {
+	tr := otel.Tracer("")
+	ctx, span := tr.Start(context.Background(), "fetchData")
+	defer span.End()
+
 	logger.Info("refreshing data")
 	for _, c := range collectors {
-		c.FetchData()
+		c.FetchData(ctx)
 	}
+}
 
+func refreshData(logger *slog.Logger, collectors ...config.ReloadCollectorConfiguration) {
+	fetchData(logger, collectors...)
 	for range time.Tick(time.Minute * 5) {
-		logger.Info("refreshing data")
-		for _, c := range collectors {
-			c.FetchData()
-		}
+		fetchData(logger, collectors...)
 	}
 }

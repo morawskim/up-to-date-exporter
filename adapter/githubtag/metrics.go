@@ -1,16 +1,18 @@
 package githubtag
 
 import (
+	"context"
 	"fmt"
-	"github.com/Masterminds/semver"
-	"github.com/patrickmn/go-cache"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"sync"
 	"time"
 	"up-to-date-exporter/adapter/githubtag/client"
 	"up-to-date-exporter/config"
+
+	"github.com/Masterminds/semver"
+	"github.com/patrickmn/go-cache"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type githubTagsCollector struct {
@@ -73,7 +75,7 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func (g *githubTagsCollector) FetchData() {
+func (g *githubTagsCollector) FetchData(ctx context.Context) {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
@@ -87,7 +89,7 @@ func (g *githubTagsCollector) FetchData() {
 		var log = slog.Default().With("repo", repo)
 		constraint, _ := semver.NewConstraint(version)
 
-		latestVersion, err := getLatestTag(g.client, repo)
+		latestVersion, err := getLatestTag(ctx, g.client, repo)
 		if err != nil {
 			log.Error(fmt.Sprintf("failed to collect for %s: %s", repo, err.Error()))
 			success = false
@@ -167,8 +169,8 @@ func boolToFloat(b bool) float64 {
 	return 0.0
 }
 
-func getLatestTag(client client.GithubTagClient, repo string) (*semver.Version, error) {
-	tags, err := client.GetTags(repo)
+func getLatestTag(ctx context.Context, client client.GithubTagClient, repo string) (*semver.Version, error) {
+	tags, err := client.GetTags(ctx, repo)
 
 	if err != nil {
 		return nil, err

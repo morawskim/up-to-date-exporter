@@ -1,10 +1,12 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 type response struct {
@@ -19,10 +21,11 @@ func NewDockerHubClient() *DockerHubHTTPClient {
 	return &DockerHubHTTPClient{}
 }
 
-func (d *DockerHubHTTPClient) fetchTags(url string) (*response, error) {
+func (d *DockerHubHTTPClient) fetchTags(ctx context.Context, url string) (*response, error) {
 	var response response
 
-	req, _ := http.NewRequest( //nolint: noctx
+	req, _ := http.NewRequestWithContext( //nolint: noctx
+		ctx,
 		http.MethodGet,
 		url,
 		nil,
@@ -43,8 +46,9 @@ func (d *DockerHubHTTPClient) fetchTags(url string) (*response, error) {
 	return &response, nil
 }
 
-func (d *DockerHubHTTPClient) Releases(container string) ([]Release, error) {
+func (d *DockerHubHTTPClient) Releases(ctx context.Context, container string) ([]Release, error) {
 	response, err := d.fetchTags(
+		ctx,
 		fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/%s/tags?page_size=100", container),
 	)
 
@@ -53,7 +57,7 @@ func (d *DockerHubHTTPClient) Releases(container string) ([]Release, error) {
 	}
 
 	if len(response.Next) > 0 {
-		response2, err := d.fetchTags(response.Next)
+		response2, err := d.fetchTags(ctx, response.Next)
 
 		if err != nil {
 			return nil, err

@@ -1,12 +1,14 @@
 package githubrelease
 
 import (
+	"context"
+	appconfig "up-to-date-exporter/config"
+
 	"github.com/caarlos0/version_exporter/client"
 	"github.com/caarlos0/version_exporter/collector"
 	"github.com/caarlos0/version_exporter/config"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
-	appconfig "up-to-date-exporter/config"
 )
 
 type GithubReleasesCollector struct {
@@ -18,7 +20,7 @@ func (g *GithubReleasesCollector) ReloadConfiguration(config *appconfig.Config) 
 	g.releaseConfig.Repositories = config.GithubReleases
 }
 
-func (g *GithubReleasesCollector) FetchData() {
+func (g *GithubReleasesCollector) FetchData(_ context.Context) {
 }
 
 func Register( //nolint:ireturn

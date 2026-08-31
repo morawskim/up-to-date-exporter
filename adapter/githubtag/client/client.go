@@ -1,9 +1,11 @@
 package client
 
+import "context"
+
 type GithubTag struct {
 	Tag string `json:"name"`
 }
 
 type GithubTagClient interface {
-	GetTags(repository string) ([]GithubTag, error)
+	GetTags(ctx context.Context, repository string) ([]GithubTag, error)
 }

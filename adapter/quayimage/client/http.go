@@ -1,10 +1,12 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 type response struct {
@@ -19,10 +21,11 @@ func NewQuayClient() *QuayHTTPClient {
 	return &QuayHTTPClient{}
 }
 
-func (d *QuayHTTPClient) fetchTags(url string) (*response, error) {
+func (d *QuayHTTPClient) fetchTags(ctx context.Context, url string) (*response, error) {
 	var response response
 
-	req, _ := http.NewRequest( //nolint: noctx
+	req, _ := http.NewRequestWithContext( //nolint: noctx
+		ctx,
 		http.MethodGet,
 		url,
 		nil,
@@ -43,8 +46,9 @@ func (d *QuayHTTPClient) fetchTags(url string) (*response, error) {
 	return &response, nil
 }
 
-func (d *QuayHTTPClient) Releases(container string) ([]Release, error) {
+func (d *QuayHTTPClient) Releases(ctx context.Context, container string) ([]Release, error) {
 	response, err := d.fetchTags(
+		ctx,
 		fmt.Sprintf("https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true&limit=100", container),
 	)
 
@@ -54,6 +58,7 @@ func (d *QuayHTTPClient) Releases(container string) ([]Release, error) {
 
 	if response.HasNextPage {
 		response2, err := d.fetchTags(
+			ctx,
 			fmt.Sprintf(
 				"https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true&limit=100&page=2",
 				container,
