@@ -13,7 +13,7 @@ stages:
 # see https://github.com/golangci/golangci-lint/issues/3094
 govulncheck:
   stage: qa
-  image: golang:1-bullseye
+  image: golang:1-trixie
   script:
     - go install golang.org/x/vuln/cmd/govulncheck@latest
     - govulncheck .
@@ -21,7 +21,7 @@ govulncheck:
 
 golangci-lint:
   stage: qa
-  image: golangci/golangci-lint:v1.54.2
+  image: golangci/golangci-lint:v2.13.2
   script:
     - golangci-lint run
 

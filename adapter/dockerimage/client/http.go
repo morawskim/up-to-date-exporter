@@ -24,7 +24,7 @@ func NewDockerHubClient() *DockerHubHTTPClient {
 func (d *DockerHubHTTPClient) fetchTags(ctx context.Context, url string) (*response, error) {
 	var response response
 
-	req, _ := http.NewRequestWithContext( //nolint: noctx
+	req, _ := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
 		url,

@@ -36,7 +36,7 @@ var (
 )
 
 func initTrace(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	//res, err := resource.New(
+	// res, err := resource.New(
 	//	ctx,
 	//	resource.WithFromEnv(),
 	//	resource.WithProcess(),
@@ -48,12 +48,12 @@ func initTrace(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	//	),
 	//)
 	//
-	//tp := sdktrace.NewTracerProvider(
+	// tp := sdktrace.NewTracerProvider(
 	//	sdktrace.WithBatcher(traceExporter),
 	//	sdktrace.WithResource(res),
 	//)
 
-	//exporter, err := stdout.New(stdout.WithPrettyPrint())
+	// exporter, err := stdout.New(stdout.WithPrettyPrint())
 	exporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
 	if err != nil {
 		return nil, err
@@ -65,9 +65,11 @@ func initTrace(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
 	return tp, err
 }
 
+//nolint:funlen
 func main() {
 	kingpin.Version("up-to-date-exporter version " + version)
 	kingpin.HelpFlag.Short('h')
@@ -93,7 +95,7 @@ func main() {
 		logger.Error(fmt.Sprintf("failed to create trace exporter: %v", err))
 		panic(err)
 	}
-	//provisioning
+
 	http.DefaultClient.Transport = otelhttp.NewTransport(http.DefaultTransport)
 
 	defer func() {
@@ -127,7 +129,7 @@ func main() {
 
 	http.Handle("/metrics", otelhttp.NewHandler(promhttp.Handler(), "metrics"))
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintf(
 			w, `
 			<html>

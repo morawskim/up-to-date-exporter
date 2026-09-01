@@ -19,7 +19,7 @@ func NewGithubReleaseHTTPClient(token string) *GithubReleaseHTTPClient {
 
 func (c *GithubReleaseHTTPClient) Releases(ctx context.Context, repository string) ([]GithubRelease, error) {
 	var result []GithubRelease
-	req, _ := http.NewRequestWithContext( //nolint:noctx
+	req, _ := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
 		fmt.Sprintf("https://api.github.com/repos/%s/releases", repository),
