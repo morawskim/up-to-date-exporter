@@ -123,7 +123,7 @@ func main() {
 	collectorDockerImages = dockerimage.Register(conf.DockerImages, cacheClient)
 	collectorGitHubTags = githubtag.Register(conf.GithubTags, cacheClient)
 	collectorQuayImages = quayimage.Register(conf.QuaryImages, cacheClient)
-	go refreshData(logger, collectorDockerImages, collectorGitHubTags, collectorQuayImages)
+	go refreshData(logger, collectorDockerImages, collectorGitHubTags, collectorQuayImages, collectorGitHubReleases)
 
 	http.Handle("/metrics", otelhttp.NewHandler(promhttp.Handler(), "metrics"))
 
