@@ -58,6 +58,10 @@ func (g *githubReleasesCollector) Collect(ch chan<- prometheus.Metric) {
 	defer g.mutex.Unlock()
 
 	for _, item := range g.internalData.data {
+		if item.repo == "" {
+			continue
+		}
+
 		ch <- prometheus.MustNewConstMetric(
 			g.upToDate,
 			prometheus.GaugeValue,

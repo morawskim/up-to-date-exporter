@@ -68,6 +68,9 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	defer v.mutex.Unlock()
 
 	for _, item := range v.internalData.data {
+		if item.repo == "" {
+			continue
+		}
 		ch <- prometheus.MustNewConstMetric(
 			v.upToDate,
 			prometheus.GaugeValue,
