@@ -23,6 +23,7 @@ type githubTagsCollector struct {
 
 	up             *prometheus.Desc
 	upToDate       *prometheus.Desc
+	failed         *prometheus.Desc
 	scrapeDuration *prometheus.Desc
 }
 
@@ -45,6 +46,7 @@ func (g *githubTagsCollector) ReloadConfiguration(config *config.Config) {
 func (g *githubTagsCollector) Describe(descs chan<- *prometheus.Desc) {
 	descs <- g.up
 	descs <- g.upToDate
+	descs <- g.failed
 	descs <- g.scrapeDuration
 }
 
@@ -53,17 +55,29 @@ func (g *githubTagsCollector) Collect(ch chan<- prometheus.Metric) {
 	defer g.mutex.Unlock()
 
 	for _, item := range g.internalData.data {
-		if item.repo == "" {
-			continue
+		if item.version == "" {
+			ch <- prometheus.MustNewConstMetric(
+				g.failed,
+				prometheus.GaugeValue,
+				1,
+				item.repo,
+			)
+		} else {
+			ch <- prometheus.MustNewConstMetric(
+				g.failed,
+				prometheus.GaugeValue,
+				0,
+				item.repo,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				g.upToDate,
+				prometheus.GaugeValue,
+				boolToFloat(item.isUpToDate),
+				item.repo,
+				item.version,
+				item.latestVersion,
+			)
 		}
-		ch <- prometheus.MustNewConstMetric(
-			g.upToDate,
-			prometheus.GaugeValue,
-			boolToFloat(item.isUpToDate),
-			item.repo,
-			item.version,
-			item.latestVersion,
-		)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -89,6 +103,15 @@ func (g *githubTagsCollector) FetchData(ctx context.Context) {
 	g.internalData.data = make([]githubTagDataItem, len(g.config.Repositories))
 
 	for repo, version := range g.config.Repositories {
+		g.internalData.data[index] = githubTagDataItem{
+			isUpToDate:    false,
+			repo:          repo,
+			version:       "",
+			latestVersion: "",
+		}
+		currentIndex := index
+		index++
+
 		var log = slog.Default().With("repo", repo)
 		constraint, _ := semver.NewConstraint(version)
 
@@ -110,13 +133,12 @@ func (g *githubTagsCollector) FetchData(ctx context.Context) {
 			With("up_to_date", isUpToDate).
 			Debug("checked")
 
-		g.internalData.data[index] = githubTagDataItem{
+		g.internalData.data[currentIndex] = githubTagDataItem{
 			isUpToDate:    isUpToDate,
 			repo:          repo,
 			version:       version,
 			latestVersion: latestVersion.String(),
 		}
-		index++
 	}
 
 	g.internalData.success = success
@@ -153,6 +175,12 @@ func collector(config *Config, client client.GithubTagClient) *githubTagsCollect
 			prometheus.BuildFQName(namespace, subsystem, "up_to_date"),
 			"Whether the repository latest tag is in the specified semantic versioning range",
 			[]string{"repository", "constraint", "latest"},
+			nil,
+		),
+		failed: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "failed"),
+			"Whether the repository latest tag cannot be found",
+			[]string{"repository"},
 			nil,
 		),
 		scrapeDuration: prometheus.NewDesc(

@@ -38,6 +38,7 @@ type versionCollector struct {
 
 	up             *prometheus.Desc
 	upToDate       *prometheus.Desc
+	failed         *prometheus.Desc
 	scrapeDuration *prometheus.Desc
 }
 
@@ -60,6 +61,7 @@ func (v *versionCollector) ReloadConfiguration(config *config.Config) {
 func (v *versionCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- v.up
 	ch <- v.upToDate
+	ch <- v.failed
 	ch <- v.scrapeDuration
 }
 
@@ -68,17 +70,29 @@ func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	defer v.mutex.Unlock()
 
 	for _, item := range v.internalData.data {
-		if item.repo == "" {
-			continue
+		if item.version == "" {
+			ch <- prometheus.MustNewConstMetric(
+				v.failed,
+				prometheus.GaugeValue,
+				1,
+				item.repo,
+			)
+		} else {
+			ch <- prometheus.MustNewConstMetric(
+				v.failed,
+				prometheus.GaugeValue,
+				0,
+				item.repo,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				v.upToDate,
+				prometheus.GaugeValue,
+				boolToFloat(item.isUpToDate),
+				item.repo,
+				item.version,
+				item.latestVersion,
+			)
 		}
-		ch <- prometheus.MustNewConstMetric(
-			v.upToDate,
-			prometheus.GaugeValue,
-			boolToFloat(item.isUpToDate),
-			item.repo,
-			item.version,
-			item.latestVersion,
-		)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -103,6 +117,15 @@ func (v *versionCollector) FetchData(ctx context.Context) {
 	v.internalData.data = make([]quayDataItem, len(v.config.Images))
 
 	for repo, ver := range v.config.Images {
+		v.internalData.data[index] = quayDataItem{
+			isUpToDate:    false,
+			repo:          repo,
+			version:       "",
+			latestVersion: "",
+		}
+		currentIndex := index
+		index++
+
 		var log = slog.Default().With("image", repo)
 		sconstraint, _ := semver.NewConstraint(strings.TrimPrefix(ver, extractPrefixFromTag(ver)))
 		latestRelease, err := getLatest(ctx, v.client, repo, ver)
@@ -124,13 +147,12 @@ func (v *versionCollector) FetchData(ctx context.Context) {
 			With("up_to_date", isUpToDate).
 			Debug("checked")
 
-		v.internalData.data[index] = quayDataItem{
+		v.internalData.data[currentIndex] = quayDataItem{
 			isUpToDate:    isUpToDate,
 			repo:          repo,
 			version:       ver,
 			latestVersion: latestRelease.String(),
 		}
-		index++
 	}
 
 	v.internalData.success = success
@@ -154,6 +176,12 @@ func newCollector(config *Config, client client.QuayClient) *versionCollector {
 			prometheus.BuildFQName(namespace, subsystem, "up_to_date"),
 			"Whether the image latest version is in the specified semantic versioning range",
 			[]string{"repository", "constraint", "latest"},
+			nil,
+		),
+		failed: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "failed"),
+			"Whether the repository latest tag cannot be found",
+			[]string{"repository"},
 			nil,
 		),
 		scrapeDuration: prometheus.NewDesc(
